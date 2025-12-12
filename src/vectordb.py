@@ -3,8 +3,6 @@ import chromadb
 from typing import List, Dict, Any
 from sentence_transformers import SentenceTransformer
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
-
 
 
 class VectorDB:
@@ -41,72 +39,72 @@ class VectorDB:
         )
 
         print(f"Vector database initialized with collection: {self.collection_name}")
+    #the chunking logic
+    def chunk_text(self, doc: str | bytes | Any) -> List[Dict[str, Any]]:
+        """Split document into chunks. Accepts str, bytes, or a file-like with .read()."""
+        if doc is None:
+            return []
 
-    def chunk_text(self, text: str, chunk_size: int = 500) -> List[str]:
-        """
-        Simple text chunking by splitting on spaces and grouping into chunks.
+        # normalize to text
+        if hasattr(doc, "read"):
+            text = doc.read()
+            if isinstance(text, (bytes, bytearray)):
+                text = text.decode("utf-8", errors="replace")
+        elif isinstance(doc, (bytes, bytearray)):
+            text = doc.decode("utf-8", errors="replace")
+        elif isinstance(doc, str):
+            text = doc
+        else:
+            raise TypeError("chunk_text expects str, bytes, or a file-like object")
 
-        Args:
-            text: Input text to chunk
-            chunk_size: Approximate number of characters per chunk
+        if not text:
+            return []
 
-        Returns:
-            List of text chunks
-        """
-        # TODO: Implement text chunking logic
-        # You have several options for chunking text - choose one or experiment with multiple:
-        #
-        # OPTION 1: Simple word-based splitting
-        #   - Split text by spaces and group words into chunks of ~chunk_size characters
-        #   - Keep track of current chunk length and start new chunks when needed
-        #
-        # OPTION 2: Use LangChain's RecursiveCharacterTextSplitter
-        #   - from langchain_text_splitters import RecursiveCharacterTextSplitter
-        #   - Automatically handles sentence boundaries and preserves context better
-        #
-        # OPTION 3: Semantic splitting (advanced)
-        #   - Split by sentences using nltk or spacy
-        #   - Group semantically related sentences together
-        #   - Consider paragraph boundaries and document structure
-        #
-        # Feel free to try different approaches and see what works best!
-
-        chunks = []
+        chunked_data = []
         text_splitter = RecursiveCharacterTextSplitter(
-               chunk_size=chunk_size,
-               chunk_overlap=100,
-                   )
-        chunks =text_splitter.split_text(text)
-        
-        return chunks
+            chunk_size=1000,
+            chunk_overlap=100,
+        )
+        chunks = text_splitter.split_text(text)
+        for i, chunk in enumerate(chunks):
+            chunk_id = f"chunk_{i}"
+            chunked_data.append({"id": chunk_id, "text": chunk})
 
+        return chunked_data
+    #the embedding logic
+    def embed_documents(self, documents: List[str]) -> List[List[float]]:
+        """Create embeddings for documents."""
+        return self.embedding_model.encode(documents).tolist()
+    
+    #adding documents to the vector db
     def add_documents(self, documents: List) -> None:
         """
         Add documents to the vector database.
 
-        Args:
-            documents: List of documents
+        documents: iterable of str | bytes | file-like objects
         """
-        # TODO: Implement document ingestion logic
-
-        # HINT: Loop through each document in the documents list
-
-        # HINT: Extract 'content' and 'metadata' from each document dict
-        # HINT: Use self.chunk_text() to split each document into chunks
-        # HINT: Create unique IDs for each chunk (e.g., "doc_0_chunk_0")
-        # HINT: Use self.embedding_model.encode() to create embeddings for all chunks
-        # HINT: Store the embeddings, documents, metadata, and IDs in your vector database
-        # HINT: Print progress messages to inform the user
-        
         print(f"Processing {len(documents)} documents...")
         for doc_idx, doc in enumerate(documents):
-            if not doc.strip():
+            # normalize doc -> text
+            if hasattr(doc, "read"):
+                text = doc.read()
+                if isinstance(text, (bytes, bytearray)):
+                    text = text.decode("utf-8", errors="replace")
+            elif isinstance(doc, (bytes, bytearray)):
+                text = doc.decode("utf-8", errors="replace")
+            else:
+                text = str(doc)
+
+            if not text.strip():
                 print(f"Skipping document {doc_idx}: no content")
                 continue
-            chunks = self.chunk_text(doc)
+
+            chunks = self.chunk_text(text)
             for chunk_idx, chunk in enumerate(chunks):
                 chunk_id = f"doc_{doc_idx}_chunk_{chunk_idx}"
-                embedding = self.embedding_model.encode(chunk)
+                embedding = self.embedding_model.encode(chunk["text"])
+                # ensure list-of-floats
+                emb_list = embedding.tolist() if hasattr(embedding, "tolist") else list(embedding)
                 metadata = {
                     "source": f"doc_{doc_idx}",
                     "doc_index": doc_idx,
@@ -114,35 +112,56 @@ class VectorDB:
                 }
                 self.collection.add(
                     ids=[chunk_id],
-                    embeddings=[embedding.tolist()],
-                    documents=[chunk],
+                    embeddings=[emb_list],
+                    documents=[chunk["text"]],
                     metadatas=[metadata]
                 )
 
         print("Documents added to vector database")
 
-    def search(self, query: str, n_results: int = 5) -> Dict[str, Any]:
+    def search(self, query: str | List[str], n_results: int = 5) -> List[Dict[str, Any]]:
         """
         Search for similar documents in the vector database.
 
-        Args:
-            query: Search query
-            n_results: Number of results to return
-
-        Returns:
-            Dictionary containing search results with keys: 'documents', 'metadatas', 'distances', 'ids'
+        Accepts a single query string or a list of query strings.
+        Returns a list of result dicts (one per query) with keys:
+        'ids', 'documents', 'metadatas', 'distances'.
         """
-        # TODO: Implement similarity search logic
-        # HINT: Use self.embedding_model.encode([query]) to create query embedding
-        # HINT: Convert the embedding to appropriate format for your vector database
-        # HINT: Use your vector database's search/query method with the query embedding and n_results
-        # HINT: Return a dictionary with keys: 'documents', 'metadatas', 'distances', 'ids'
-        # HINT: Handle the case where results might be empty
+        # Normalize input to list of queries
+        if isinstance(query, str):
+            queries = [query]
+        else:
+            queries = list(query)
 
-        # Your implementation here
-        return {
-            "documents": [],
-            "metadatas": [],
-            "distances": [],
-            "ids": [],
-        }
+        # Get embeddings for all queries (SentenceTransformer returns ndarray)
+        embeddings = self.embedding_model.encode(queries)
+        # Ensure embeddings is a list-of-lists for chroma
+        try:
+            emb_list = embeddings.tolist()
+        except AttributeError:
+            # embeddings already a list
+            emb_list = embeddings
+
+        # Query chroma
+        results = self.collection.query(
+            query_embeddings=emb_list,
+            n_results=n_results
+        )
+
+        # Normalize chroma response into a list of dicts per query
+        ids = results.get("ids", [])
+        documents = results.get("documents", [])
+        metadatas = results.get("metadatas", [])
+        distances = results.get("distances", [])
+
+        out = []
+        qcount = len(queries)
+        for i in range(qcount):
+            out.append({
+                "ids": ids[i] if i < len(ids) else [],
+                "documents": documents[i] if i < len(documents) else [],
+                "metadatas": metadatas[i] if i < len(metadatas) else [],
+                "distances": distances[i] if i < len(distances) else [],
+            })
+
+        return out
