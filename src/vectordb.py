@@ -74,17 +74,14 @@ class VectorDB:
         chunks = text_splitter.split_text(text)
         return chunks
 
-    def add_documents(self, documents: List[Union[str, bytes, Dict[str, Any]]]) -> None:
+    def add_documents(self, documents: List[Union[str, bytes, Dict[str, Any]]], document_id: str | None = None) -> int:
         """
         Add documents to the vector database.
 
-        Each document may be:
-          - a plain string (document text)
-          - bytes (file content)
-          - a dict with at least a 'content' key and optional 'metadata'
-
-        This method batches chunk embeddings per document for efficiency.
+        If document_id is provided it will be used when creating chunk IDs and metadata.
+        Returns: total number of chunks added
         """
+        total_chunks = 0
         print(f"Processing {len(documents)} documents...")
         for doc_idx, doc in enumerate(documents):
             # Normalize document -> text and get optional metadata
@@ -114,33 +111,36 @@ class VectorDB:
 
             # Create embeddings for all chunks of this document in one call
             embeddings = self.embedding_model.encode(chunks)
-            # Ensure list-of-lists
             try:
                 emb_list = embeddings.tolist()
             except Exception:
-                # embeddings might already be a list
                 emb_list = list(embeddings)
 
-            ids = [f"doc_{doc_idx}_chunk_{i}" for i in range(len(chunks))]
+            # Use provided document_id when available to build stable chunk ids
+            ids = [
+                (f"{document_id}_chunk_{i}" if document_id else f"doc_{doc_idx}_chunk_{i}")
+                for i in range(len(chunks))
+            ]
             metadatas = [
                 {
                     **metadata_base,
-                    "source": f"doc_{doc_idx}",
+                    "source": (document_id if document_id else f"doc_{doc_idx}"),
                     "doc_index": doc_idx,
                     "chunk_index": i,
                 }
                 for i in range(len(chunks))
             ]
 
-            # Add to chroma in a single batch call for this document
             self.collection.add(
                 ids=ids,
                 embeddings=emb_list,
                 documents=chunks,
                 metadatas=metadatas,
             )
+            total_chunks += len(chunks)
 
         print("Documents added to vector database")
+        return total_chunks
 
     def search(self, query: Union[str, List[str]], n_results: int = 5) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         """
