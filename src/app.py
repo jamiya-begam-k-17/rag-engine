@@ -60,16 +60,24 @@ class RAGAssistant:
     Supports OpenAI, Groq, and Google Gemini APIs.
     """
 
-    def __init__(self):
-        """Initialize the RAG assistant."""
+    def __init__(self,require_api_key=True,model=None):
+        """Initialize the RAG assistant.
+        Args:
+            require_api_key: If True, will raise an error if no API key is found.
+                            If False, will allow initialization without an API key.
+        """
+
+        # Store the model
+        self.current_model = model or os.getenv("CURRENT_MODEL")
+
         # Initialize LLM - check for available API keys in order of preference
-        self.llm = self._initialize_llm()
-        if not self.llm:
-            raise ValueError(
-                "No valid API key found. "
-                "Please set one of: "
-                "OPENAI_API_KEY, GROQ_API_KEY, or GOOGLE_API_KEY in your .env file"
-            )
+        self.llm = self._initialize_llm(require_api_key, self.current_model)
+        # if not self.llm:
+        #     raise ValueError(
+        #         "No valid API key found. "
+        #         "Please set one of: "
+        #         "OPENAI_API_KEY, GROQ_API_KEY, or GOOGLE_API_KEY in your .env file"
+        #     )
 
         self.db_path = "rag_engine.db"
 
@@ -90,21 +98,30 @@ class RAGAssistant:
             "\nBe inside the scope of the provided context."
             "\n\nContext: {context}\n\nQuestion: {question}"
         )
-        self.chain = self.prompt_template | self.llm | StrOutputParser()
+        if self.llm:
+            self.chain = self.prompt_template | self.llm | StrOutputParser()
+        else:
+            self.chain = None
 
         print("RAG Assistant initialized successfully")
 
 
-    def _initialize_llm(self):
+    def _initialize_llm(self, require_api_key=True, model=None):
         """
         Initialize the LLM by checking for available API keys.
         Tries Google Gemini, Groq, and OpenAI in that order.
+        Args:
+            require_api_key: If True, will raise an error if no API key is found.
+                            If False, will return None if no API key is found.
+            model: The specified model to use
         """
         # Debug: Print available environment variables
         print("Debug: Checking environment variables...")
         print(f"OPENAI_API_KEY exists: {'OPENAI_API_KEY' in os.environ}")
         print(f"GROQ_API_KEY exists: {'GROQ_API_KEY' in os.environ}")
         print(f"GOOGLE_API_KEY exists: {'GOOGLE_API_KEY' in os.environ}")
+        print(f"API_KEY exists: {'API_KEY' in os.environ}")
+        print(f"Requested model: {model}")
         
         # Check for Google API key
         if os.getenv("GOOGLE_API_KEY"):
@@ -117,8 +134,7 @@ class RAGAssistant:
                 model=model_name,
                 temperature=0.1,
             )
-
-        elif os.getenv("GROQ_API_KEY"):
+        elif groq_key:
             model_name = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
             api_key = os.getenv("GROQ_API_KEY")
             print(f"Using Groq model: {model_name}")
@@ -126,8 +142,7 @@ class RAGAssistant:
             return ChatGroq(
                 api_key=api_key, model=model_name, temperature=0.1
             )
-
-        elif os.getenv("OPENAI_API_KEY"):
+        elif openai_key:
             model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
             api_key = os.getenv("OPENAI_API_KEY")
             print(f"Using OpenAI model: {model_name}")
@@ -144,9 +159,113 @@ class RAGAssistant:
                     print(f.read())
             except:
                 print("Could not read .env file")
-            raise ValueError(
-                "No valid API key found. Please set one of: OPENAI_API_KEY, GROQ_API_KEY, or GOOGLE_API_KEY in your .env file"
-            )
+                
+            if require_api_key:
+                raise ValueError(
+                    "No valid API key found. Please set one of: OPENAI_API_KEY, GROQ_API_KEY, GOOGLE_API_KEY, or API_KEY in your .env file"
+                )
+            else:
+                print("Warning: No API key found. RAG functionality will be limited.")
+                return None
+    
+    def set_api_key(self, api_key: str, model: str = None):
+        """
+        Set an API key and initialize the LLM.
+        
+        Args:
+            api_key: The API key to use
+            model: The model to use (e.g., 'gemini-2.0-flash-exp')
+        """
+        # FIXED: Update the current model
+        if model:
+            self.current_model = model
+        
+        # FIXED: Use model to determine the correct LLM initialization
+        if self.current_model:
+            if "gemini" in self.current_model.lower():
+                print(f"Setting Google Gemini API key for model: {self.current_model}")
+                self.llm = ChatGoogleGenerativeAI(
+                    google_api_key=api_key,
+                    model=self.current_model,
+                    temperature=0.1
+                )
+            elif "llama" in self.current_model.lower() or "groq" in self.current_model.lower():
+                print(f"Setting Groq API key for model: {self.current_model}")
+                self.llm = ChatGroq(
+                    api_key=api_key,
+                    model=self.current_model,
+                    temperature=0.1
+                )
+            elif "gpt" in self.current_model.lower():
+                print(f"Setting OpenAI API key for model: {self.current_model}")
+                self.llm = ChatOpenAI(
+                    api_key=api_key,
+                    model=self.current_model,
+                    temperature=0.1
+                )
+            else:
+                # Default to OpenAI
+                print(f"Setting generic API key with model: {self.current_model}")
+                self.llm = ChatOpenAI(
+                    api_key=api_key,
+                    model=self.current_model,
+                    temperature=0.1
+                )
+        else:
+            # FIXED: Fallback - try to determine from key format
+            if api_key.startswith("gsk_"):
+                print("Setting Groq API key")
+                self.llm = ChatGroq(
+                    api_key=api_key,
+                    model="llama-3.1-8b-instant",
+                    temperature=0.1
+                )
+            elif api_key.startswith("AIz"):
+                print("Setting Google API key")
+                self.llm = ChatGoogleGenerativeAI(
+                    google_api_key=api_key,
+                    model="gemini-2.0-flash-exp",
+                    temperature=0.1
+                )
+            else:
+                print("Setting OpenAI API key")
+                self.llm = ChatOpenAI(
+                    api_key=api_key,
+                    model="gpt-4o-mini",
+                    temperature=0.1
+                )
+        
+        # Recreate the chain with the new LLM
+        self.chain = self.prompt_template | self.llm | StrOutputParser()
+        print("LLM initialized successfully")
+    
+    # def set_api_key(self, api_key: str, model: str=None):
+    #     """
+    #     Set an API key and initialize the LLM.
+        
+    #     Args:
+    #         api_key: The API key to use
+    #         model: The model to use
+    #     """
+    #     # Update the current model
+    #     if model:
+    #         self.current_model = model
+        
+    #     # Determine the provider based on key format
+    #     if api_key.startswith("gsk_"):
+    #         print(f"Setting Groq API key")
+    #         self.llm = ChatGroq(api_key=api_key, model=os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"), temperature=0.1)
+    #     elif api_key.startswith("sk-"):
+    #         print(f"Setting OpenAI API key")
+    #         self.llm = ChatOpenAI(api_key=api_key, model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"), temperature=0.1)
+    #     else:
+    #         # Default to OpenAI for unknown formats
+    #         print(f"Setting generic API key with OpenAI")
+    #         self.llm = ChatOpenAI(api_key=api_key, model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"), temperature=0.1)
+        
+    #     # Recreate the chain with the new LLM
+    #     self.chain = self.prompt_template | self.llm | StrOutputParser()
+    #     print("LLM initialized successfully")
 
     def upload_document(self, filepath: str) -> dict:
         """
@@ -243,6 +362,9 @@ class RAGAssistant:
         db.connect()
 
         try:
+            if not self.llm:
+                return {"error": "No API key configured. Please add an api key to use the RAG functionality.","status":"error"}
+            
             active_session_id = session_id or self.current_session_id
 
             if not active_session_id:
@@ -339,9 +461,9 @@ class RAGAssistant:
 def main():
     """Main function to demonstrate the RAG assistant."""
     try:
-        # Initialize the RAG assistant
+        # Initialize the RAG assistant with require_api_key=False
         print("Initializing RAG Assistant...")
-        assistant = RAGAssistant()
+        assistant = RAGAssistant(require_api_key=False)
 
         # FIX: Safely get file path
         filename, filepath = get_data_filepath()
