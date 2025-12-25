@@ -173,7 +173,7 @@ class RAGAssistant:
             
             # This will raise exceptions if PDF has issues
             try:
-                doc_text = load_document(filename, filepath)
+                doc_text = load_document(filename, filepath) 
             except Exception as load_error:
                 # Catch validation errors from validate_txt_or_pdf
                 return {"error": str(load_error), "status": "error"}
