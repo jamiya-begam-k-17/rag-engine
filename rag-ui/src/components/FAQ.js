@@ -13,16 +13,36 @@ const FAQ = () => {
 
   const faqs = [
     {
-      question: "🔒 Is my data secure?",
-      answer: "Yes, all processing happens in ephemeral memory. We do not store your documents permanently."
+      question: "🤖 How does the RAG Engine work?",
+      answer: "The RAG (Retrieval-Augmented Generation) Engine processes your documents in three steps: 1) It breaks down your document into smaller chunks, 2) It creates vector embeddings of these chunks for semantic search, and 3) When you ask a question, it retrieves relevant chunks and generates an answer based on that context."
     },
     {
-      question: "📄 What formats are supported?",
-      answer: "Currently PDF. We are working on DOCX and TXT support."
+      question: "🔐 Is my data secure?",
+      answer: "Yes, all processing happens in ephemeral memory. We do not store your documents permanently on our servers. Your documents are processed locally and the resulting embeddings are stored in a secure vector database. You can remove your document at any time, which deletes all associated data."
     },
     {
-      question: "🎯 How accurate is the RAG?",
-      answer: "It depends on the source quality. The engine uses a Top-K retrieval of 5 chunks for maximum context."
+      question: "📄 What document formats are supported?",
+      answer: "Currently, we support PDF and TXT files. We're working on adding support for additional formats like DOCX, HTML, and Markdown. Each document can be up to 50MB in size, which is approximately 100 pages of text."
+    },
+    {
+      question: "🧠 What models can I use?",
+      answer: "We support Google Gemini models (gemini-2.5-flash, gemini-2.5-pro, gemini-1.5-flash, gemini-1.5-pro) and Groq models (llama-3.1-8b-instant, llama-3.3-70b-versatile). Each model has different strengths - Gemini models are great for complex reasoning, while Groq models offer faster response times."
+    },
+    {
+      question: "🎯 How accurate are the answers?",
+      answer: "The accuracy depends on several factors: the quality of your document, the specificity of your question, and the model you choose. Our system retrieves the top 5 most relevant chunks for each question, which provides comprehensive context. For best results, ask specific questions about content that exists in your documents."
+    },
+    {
+      question: "🔄 What happens when I upload the same document twice?",
+      answer: "Our system uses content hashing to detect duplicate uploads. If you upload the same document again, it won't be reprocessed. Instead, the system will reuse the previously processed chunks and embeddings, saving time and resources. The status will show 'Loaded from Cache' for such documents."
+    },
+    {
+      question: "💾 Can I export my chat history?",
+      answer: "Currently, chat history is stored in your session and is available as long as your session is active. We're working on adding export functionality that will allow you to download your conversations in various formats."
+    },
+    {
+      question: "🌐 Does this work offline?",
+      answer: "The document processing and vector storage happen on the server side, so an internet connection is required for uploading documents and chatting. However, once a document is processed, the system is optimized for fast responses to minimize latency."
     }
   ];
 

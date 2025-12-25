@@ -1,23 +1,33 @@
-// src/components/Sidebar.js
-import React, { useState, useRef, useCallback } from 'react';
-import { Link, useLocation } from 'react-router-dom'; // Import useLocation
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useFileContext } from '../context/FileContext';
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB in bytes
+const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB in bytes
 
 function Sidebar() {
-  const location = useLocation(); // Get current location
+  const location = useLocation();
+  const navigate = useNavigate();
   const {
     uploadedFile,
     fileProcessed,
     isProcessing,
     uploaderKey,
     handleFileUpload,
-    removeDocument
+    handleApiKeyUpload,
+    removeDocument,
+    error,
+    backendConnected,
+    apiKeyStored,
+    selectedModel,
+    setSelectedModel,
+    documentMetadata // Assuming this exists in context with chunk count, cache status, etc.
   } = useFileContext();
 
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [apiKeyError, setApiKeyError] = useState('');
   const fileInputRef = useRef(null);
   const dragCounter = useRef(0);
 
@@ -30,14 +40,14 @@ function Sidebar() {
     if (!file) return false;
     
     // Check file type
-    if (file.type !== 'application/pdf') {
-      setUploadError('Please upload a PDF file only.');
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.txt')) {
+      setUploadError('Please upload a PDF or TXT file only.');
       return false;
     }
     
     // Check file size
     if (file.size > MAX_FILE_SIZE) {
-      setUploadError(`File size must be less than 50MB. Current size: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
+      setUploadError(`File size must be less than 200MB. Current size: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
       return false;
     }
     
@@ -45,15 +55,41 @@ function Sidebar() {
     return true;
   };
 
-  const processFileUpload = (file) => {
+  const processFileUpload = useCallback(async (file) => {
     if (!validateFile(file)) return;
-    handleFileUpload(file);
-  };
+    
+    const result = await handleFileUpload(file);
+    
+    if (result && result.status === 'success') {
+      navigate('/chat');
+    }
+  }, [handleFileUpload, navigate]);
 
   const handleFileInputChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       processFileUpload(file);
+    }
+  };
+
+  const handleApiKeySubmit = async () => {
+    if (!apiKey.trim()) {
+      setApiKeyError('API key cannot be empty');
+      return;
+    }
+    
+    if (!selectedModel) {
+      setApiKeyError('Please select a model first');
+      return;
+    }
+    
+    const success = await handleApiKeyUpload(apiKey, selectedModel);
+    if (success) {
+      setApiKeyError('');
+      setShowApiKeyInput(false);
+      setApiKey('');
+    } else {
+      setApiKeyError('Failed to store API key. Please check your key and try again.');
     }
   };
 
@@ -90,413 +126,466 @@ function Sidebar() {
     if (files && files.length > 0) {
       processFileUpload(files[0]);
     }
-  }, []);
+  }, [processFileUpload]);
+
+  // Update the error state when the context error changes
+  useEffect(() => {
+    if (error) {
+      setUploadError(error);
+    } else {
+      setUploadError('');
+    }
+  }, [error]);
+
+  // Helper function to format file size
+  const formatFileSize = (bytes) => {
+    if (!bytes) return 'N/A';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  };
+
+  // Helper function to get model display name
+  const getModelDisplayName = (modelId) => {
+    const modelNames = {
+      // 'gemini-2.0-flash-exp': 'Gemini 2.0 Flash',
+      // 'gemini-1.5-flash': 'Gemini 1.5 Flash',
+      // 'gemini-1.5-pro': 'Gemini 1.5 Pro',
+      'llama-3.1-8b-instant': 'Llama 3.1 8B Instant',
+      'llama-3.3-70b-versatile': 'Llama 3.3 70B Versatile'
+    };
+    return modelNames[modelId] || modelId;
+  };
 
   return (
-    <div className="w-64 bg-purple-900 border-r border-purple-800 p-4 overflow-y-auto">
-      <div className="mb-6">
-        <h2 className="text-xl font-bold mb-2 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">🤖 RAG Engine</h2>
-        <p className="text-xs text-purple-300">v2.0 • Deep Purple Edition</p>
-        <hr className="border-purple-700 my-4" />
+    <div className="w-64 bg-gradient-to-b from-purple-950 to-purple-900 border-r border-purple-800 shadow-2xl flex flex-col h-screen">
+      <div className="p-4 border-b border-purple-800 bg-purple-900 bg-opacity-50">
+        <h2 className="text-xl font-bold mb-1 bg-gradient-to-r from-purple-300 via-pink-300 to-purple-400 bg-clip-text text-transparent">
+          🤖 RAG Engine
+        </h2>
+        <p className="text-xs text-purple-400 font-medium">v1.0 • Agentic AI Edition</p>
       </div>
 
-      <div className="mb-6">
-        <h3 className="text-sm font-semibold mb-3 text-purple-200">Menu</h3>
-        <ul className="space-y-2">
-          <li>
-            <Link 
-              to="/" 
-              className={`block w-full text-left px-3 py-2 rounded transition-colors ${
-                isActive('/') 
-                  ? 'bg-purple-700 text-white border-l-4 border-purple-400' 
-                  : 'text-purple-100 hover:bg-purple-800'
-              }`}
-            >
-              🏠 Home
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/chat" 
-              className={`block w-full text-left px-3 py-2 rounded transition-colors ${
-                isActive('/chat') 
-                  ? 'bg-purple-700 text-white border-l-4 border-purple-400' 
-                  : 'text-purple-100 hover:bg-purple-800'
-              }`}
-            >
-              💬 Chat Assistant
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/features" 
-              className={`block w-full text-left px-3 py-2 rounded transition-colors ${
-                isActive('/features') 
-                  ? 'bg-purple-700 text-white border-l-4 border-purple-400' 
-                  : 'text-purple-100 hover:bg-purple-800'
-              }`}
-            >
-              ⚡ Features
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/faq" 
-              className={`block w-full text-left px-3 py-2 rounded transition-colors ${
-                isActive('/faq') 
-                  ? 'bg-purple-700 text-white border-l-4 border-purple-400' 
-                  : 'text-purple-100 hover:bg-purple-800'
-              }`}
-            >
-              ❓ Help & FAQ
-            </Link>
-          </li>
-        </ul>
-      </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-5">
+        {/* Navigation Menu */}
+        <div>
+          <h3 className="text-xs font-bold mb-3 text-purple-300 uppercase tracking-wider">Navigation</h3>
+          <ul className="space-y-1">
+            <li>
+              <Link 
+                to="/" 
+                className={`flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                  isActive('/') 
+                    ? 'bg-gradient-to-r from-purple-700 to-purple-600 text-white shadow-lg shadow-purple-900/50 border-l-4 border-purple-300' 
+                    : 'text-purple-200 hover:bg-purple-800 hover:text-white'
+                }`}
+              >
+                <span className="text-lg mr-3">🏠</span>
+                <span className="text-sm font-medium">Home</span>
+              </Link>
+            </li>
+            <li>
+              <Link 
+                to="/chat" 
+                className={`flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                  isActive('/chat') 
+                    ? 'bg-gradient-to-r from-purple-700 to-purple-600 text-white shadow-lg shadow-purple-900/50 border-l-4 border-purple-300' 
+                    : 'text-purple-200 hover:bg-purple-800 hover:text-white'
+                }`}
+              >
+                <span className="text-lg mr-3">💬</span>
+                <span className="text-sm font-medium">Chat Assistant</span>
+              </Link>
+            </li>
+            <li>
+              <Link 
+                to="/features" 
+                className={`flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                  isActive('/features') 
+                    ? 'bg-gradient-to-r from-purple-700 to-purple-600 text-white shadow-lg shadow-purple-900/50 border-l-4 border-purple-300' 
+                    : 'text-purple-200 hover:bg-purple-800 hover:text-white'
+                }`}
+              >
+                <span className="text-lg mr-3">⚡</span>
+                <span className="text-sm font-medium">Features</span>
+              </Link>
+            </li>
+            <li>
+              <Link 
+                to="/faq" 
+                className={`flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                  isActive('/faq') 
+                    ? 'bg-gradient-to-r from-purple-700 to-purple-600 text-white shadow-lg shadow-purple-900/50 border-l-4 border-purple-300' 
+                    : 'text-purple-200 hover:bg-purple-800 hover:text-white'
+                }`}
+              >
+                <span className="text-lg mr-3">❓</span>
+                <span className="text-sm font-medium">Help & FAQ</span>
+              </Link>
+            </li>
+          </ul>
+        </div>
 
-      <hr className="border-purple-700 my-4" />
+        <div className="border-t border-purple-800"></div>
+        
+        {/* Model Selection Section */}
+        <div>
+          <h3 className="text-xs font-bold mb-3 text-purple-300 uppercase tracking-wider flex items-center">
+            <span className="mr-2">🤖</span>
+            Model Selection
+            <span className="ml-auto text-red-400 text-lg">*</span>
+          </h3>
+          <div className="bg-purple-900 bg-opacity-40 border border-purple-700 rounded-lg p-3 shadow-inner">
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              disabled={apiKeyStored} // FIXED: Disable after API key is stored
+              className={`w-full p-2.5 bg-purple-950 bg-opacity-60 border border-purple-700 rounded-lg text-purple-100 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
+                apiKeyStored ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer hover:border-purple-500'
+              }`}
+            >
+              <option value="">-- Select a Model --</option>
+              {/* <optgroup label="🔷 Google Gemini">
+                <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental)</option>
+                <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+              </optgroup> */}
+              <optgroup label="🦙 Groq">
+                <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
+                <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile</option>
+              </optgroup>
+            </select>
+            {!selectedModel && !apiKeyStored && (
+              <div className="mt-2 flex items-start space-x-2 text-xs text-amber-300">
+                <span className="text-base">⚠️</span>
+                <p>Please select a model before adding API key</p>
+              </div>
+            )}
+            {apiKeyStored && (
+              <div className="mt-2 flex items-start space-x-2 text-xs text-purple-300">
+                <span className="text-base">🔒</span>
+                <p>Model locked with API key configuration</p>
+              </div>
+            )}
+          </div>
+        </div>
 
-      <div className="mb-6">
-        <h3 className="text-sm font-semibold mb-3 text-purple-200">📁 Document Context</h3>
-        
-        <input
-          ref={fileInputRef}
-          key={uploaderKey}
-          type="file"
-          accept=".pdf"
-          onChange={handleFileInputChange}
-          className="hidden"
-        />
-        
-        {/* Drag and Drop Area */}
-        <div
-          className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer
-            ${isDragging 
-              ? 'border-purple-500 bg-purple-500 bg-opacity-20' 
-              : 'border-purple-600 hover:border-purple-500 hover:bg-purple-800 hover:bg-opacity-30'
-            }
-            ${uploadError ? 'border-red-500 bg-red-500 bg-opacity-10' : ''}
-          `}
-          onClick={() => fileInputRef.current.click()}
-          onDragEnter={handleDragEnter}
-          onDragLeave={handleDragLeave}
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
-        >
-          {isDragging ? (
-            <div>
-              <div className="text-3xl mb-2">📥</div>
-              <p className="text-sm font-medium text-purple-300">Drop your PDF here</p>
+        {/* API Key Section */}
+        <div>
+          <h3 className="text-xs font-bold mb-3 text-purple-300 uppercase tracking-wider flex items-center">
+            <span className="mr-2">🔑</span>
+            API Key
+            <span className="ml-auto text-red-400 text-lg">*</span>
+          </h3>
+          
+          {apiKeyStored ? (
+            <div className="bg-gradient-to-br from-emerald-900 to-green-900 bg-opacity-40 border border-green-600 rounded-lg p-3 shadow-lg">
+              <div className="flex items-center mb-2">
+                <span className="text-2xl mr-2">✓</span>
+                <span className="font-semibold text-sm text-green-100">API Key Configured</span>
+              </div>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex items-center text-green-200">
+                  <span className="mr-2">🤖</span>
+                  <span className="font-medium">Model:</span>
+                  <span className="ml-auto text-green-100 font-semibold">{getModelDisplayName(selectedModel)}</span>
+                </div>
+                <div className="flex items-center text-green-200">
+                  <span className="mr-2">🔐</span>
+                  <span className="font-medium">Status:</span>
+                  <span className="ml-auto text-green-100 font-semibold">Active</span>
+                </div>
+              </div>
             </div>
           ) : (
             <div>
-              <div className="text-3xl mb-2">📄</div>
-              <p className="text-sm font-medium text-purple-100">
-                {uploadedFile ? 'Click to replace PDF' : 'Click or drag PDF here'}
-              </p>
-              <p className="text-xs text-purple-400 mt-1">Max size: 50MB</p>
+              {!showApiKeyInput ? (
+                <button
+                  onClick={() => setShowApiKeyInput(true)}
+                  disabled={!selectedModel}
+                  className={`w-full p-3 bg-purple-900 bg-opacity-40 border border-purple-700 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    selectedModel 
+                      ? 'text-purple-100 hover:bg-purple-800 hover:border-purple-500 hover:shadow-lg cursor-pointer' 
+                      : 'text-purple-400 opacity-50 cursor-not-allowed'
+                  }`}
+                >
+                  <span className="text-lg mr-2">🔑</span>
+                  Add API Key
+                </button>
+              ) : (
+                <div className="bg-purple-900 bg-opacity-40 border border-purple-700 rounded-lg p-3 shadow-inner">
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder={`Enter your ${selectedModel.includes('gemini') ? 'Google' : 'Groq'} API key`}
+                    className="w-full p-2.5 mb-3 bg-purple-950 bg-opacity-60 border border-purple-700 rounded-lg text-purple-100 placeholder-purple-500 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                  {apiKeyError && (
+                    <div className="mb-3 p-2 bg-red-900 bg-opacity-30 border border-red-700 rounded text-xs text-red-300 flex items-start">
+                      <span className="mr-2">⚠️</span>
+                      <span>{apiKeyError}</span>
+                    </div>
+                  )}
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={handleApiKeySubmit}
+                      className="flex-1 text-xs font-medium bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white py-2.5 px-3 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+                    >
+                      <span className="mr-1">✅</span>
+                      Save Key
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowApiKeyInput(false);
+                        setApiKeyError('');
+                        setApiKey('');
+                      }}
+                      className="flex-1 text-xs font-medium bg-gray-700 hover:bg-gray-600 text-white py-2.5 px-3 rounded-lg transition-all duration-200"
+                    >
+                      <span className="mr-1">❌</span>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+              {!selectedModel && (
+                <div className="mt-2 flex items-start space-x-2 text-xs text-amber-300">
+                  <span className="text-base">⚠️</span>
+                  <p>Select a model first to add API key</p>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Upload Error Message */}
-        {uploadError && (
-          <div className="mt-3 p-3 bg-red-900 bg-opacity-30 border border-red-700 rounded text-sm text-red-300">
-            <span className="font-medium">Error:</span> {uploadError}
-          </div>
-        )}
+        <div className="border-t border-purple-800"></div>
 
-        {/* Processing Status */}
-        {isProcessing && (
-          <div className="mt-4 p-3 bg-purple-800 rounded">
-            <div className="flex items-center">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-300 mr-2"></div>
-              <span className="text-sm text-purple-100">Indexing Document...</span>
+        {/* Document Upload Section */}
+        <div>
+          <h3 className="text-xs font-bold mb-3 text-purple-300 uppercase tracking-wider flex items-center">
+            <span className="mr-2">📁</span>
+            Document Context
+          </h3>
+          
+          {/* Backend Connection Error */}
+          {backendConnected === false && (
+            <div className="mb-3 p-3 bg-red-900 bg-opacity-30 border border-red-700 rounded-lg text-xs shadow-lg">
+              <div className="flex items-start space-x-2 text-red-300">
+                <span className="text-lg">🔴</span>
+                <div>
+                  <p className="font-semibold mb-1">Backend Connection Error</p>
+                  <p className="text-red-400">Please ensure the backend server is running on port 8000.</p>
+                </div>
+              </div>
             </div>
-            <div className="mt-2 text-xs text-purple-300 space-y-1">
-              <p className="flex items-center">
-                <span className="mr-2">📄</span> Parsing PDF...
-              </p>
-              <p className="flex items-center">
-                <span className="mr-2">🧠</span> Generating Embeddings...
-              </p>
-              <p className="flex items-center">
-                <span className="mr-2">💾</span> Storing in Vector DB...
-              </p>
+          )}
+          
+          <input
+            ref={fileInputRef}
+            key={uploaderKey}
+            type="file"
+            accept=".pdf,.txt"
+            onChange={handleFileInputChange}
+            className="hidden"
+            disabled={backendConnected === false || !apiKeyStored}
+          />
+          
+          {/* Drag and Drop Area */}
+          <div
+            className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-all duration-300 cursor-pointer
+              ${isDragging 
+                ? 'border-purple-400 bg-purple-500 bg-opacity-20 scale-105 shadow-xl' 
+                : 'border-purple-700 hover:border-purple-500 hover:bg-purple-800 hover:bg-opacity-30'
+              }
+              ${uploadError || error ? 'border-red-500 bg-red-500 bg-opacity-10' : ''}
+              ${backendConnected === false || !apiKeyStored ? 'opacity-50 cursor-not-allowed' : ''}
+            `}
+            onClick={() => backendConnected !== false && apiKeyStored && fileInputRef.current.click()}
+            onDragEnter={backendConnected !== false && apiKeyStored ? handleDragEnter : undefined}
+            onDragLeave={backendConnected !== false && apiKeyStored ? handleDragLeave : undefined}
+            onDragOver={backendConnected !== false && apiKeyStored ? handleDragOver : undefined}
+            onDrop={backendConnected !== false && apiKeyStored ? handleDrop : undefined}
+          >
+            {isDragging ? (
+              <div className="space-y-2">
+                <div className="text-4xl animate-bounce">📥</div>
+                <p className="text-sm font-semibold text-purple-200">Drop your file here</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="text-4xl">📄</div>
+                <p className="text-sm font-semibold text-purple-100">
+                  {backendConnected === false ? 'Backend Not Connected' :
+                  !apiKeyStored ? 'API Key Required' :
+                  uploadedFile ? 'Click to replace file' : 'Click or drag file here'}
+                </p>
+                <p className="text-xs text-purple-400">
+                  {backendConnected === false ? 'Please start the backend server' :
+                  !apiKeyStored ? 'Configure API key first' :
+                  'PDF or TXT • Max 25MB'}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Upload Error Message */}
+          {uploadError && (
+            <div className="mt-3 p-3 bg-red-900 bg-opacity-30 border border-red-700 rounded-lg text-xs shadow-lg">
+              <div className="flex items-start space-x-2 text-red-300">
+                <span className="text-lg">⚠️</span>
+                <div>
+                  <p className="font-semibold mb-1">Upload Error</p>
+                  <p className="text-red-400">{uploadError}</p>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Active Document Display */}
-        {uploadedFile && fileProcessed && (
-          <div className="mt-4 p-3 bg-purple-800 bg-opacity-50 rounded border border-purple-600">
-            <p className="text-xs text-purple-300 font-semibold mb-1">ACTIVE DOCUMENT</p>
-            <p className="text-sm text-white truncate mb-2">{uploadedFile}</p>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                removeDocument();
-              }}
-              className="w-full text-xs bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded transition-colors"
-            >
-              ❌ Remove Document
-            </button>
-          </div>
-        )}
+          {/* Processing Status */}
+          {isProcessing && (
+            <div className="mt-3 bg-gradient-to-br from-purple-900 to-purple-800 border border-purple-600 rounded-lg p-4 shadow-xl">
+              <div className="flex items-center mb-3">
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-purple-300 border-t-transparent mr-3"></div>
+                <span className="text-sm font-semibold text-purple-100">Processing Document...</span>
+              </div>
+              <div className="space-y-2 text-xs text-purple-300">
+                <div className="flex items-center space-x-2 animate-pulse">
+                  <span className="text-base">📄</span>
+                  <span>Parsing document content</span>
+                </div>
+                <div className="flex items-center space-x-2 animate-pulse" style={{animationDelay: '0.2s'}}>
+                  <span className="text-base">🧠</span>
+                  <span>Generating embeddings</span>
+                </div>
+                <div className="flex items-center space-x-2 animate-pulse" style={{animationDelay: '0.4s'}}>
+                  <span className="text-base">💾</span>
+                  <span>Storing in vector database</span>
+                </div>
+              </div>
+            </div>
+          )}
 
-        {/* No Document State */}
-        {!uploadedFile && !isProcessing && !uploadError && (
-          <div className="mt-4 p-3 bg-purple-800 bg-opacity-30 rounded text-sm text-purple-300">
-            Upload a PDF to enable RAG Chat
-          </div>
-        )}
+          {/* Active Document Display - FIXED: Professional Deep Purple UI with Details */}
+          {uploadedFile && fileProcessed && (
+            <div className="mt-3 bg-gradient-to-br from-purple-900 to-purple-800 border border-purple-600 rounded-lg shadow-xl overflow-hidden">
+              <div className="bg-purple-950 bg-opacity-50 px-3 py-2 border-b border-purple-700">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-purple-200 uppercase tracking-wider">Active Document</span>
+                  <span className="px-2 py-0.5 bg-green-600 text-white text-xs font-semibold rounded-full">Active</span>
+                </div>
+              </div>
+              
+              <div className="p-3 space-y-3">
+                {/* File Name */}
+                <div>
+                  <p className="text-xs text-purple-400 font-medium mb-1">📄 File Name</p>
+                  <p className="text-sm text-white font-medium truncate bg-purple-950 bg-opacity-40 px-2 py-1.5 rounded border border-purple-800">
+                    {uploadedFile}
+                  </p>
+                </div>
+
+                {/* Document Details Grid */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-purple-950 bg-opacity-40 px-2 py-2 rounded border border-purple-800">
+                    <p className="text-xs text-purple-400 mb-1">📊 Chunks</p>
+                    <p className="text-sm text-white font-bold">
+                      {documentMetadata?.chunkCount || 'N/A'}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-purple-950 bg-opacity-40 px-2 py-2 rounded border border-purple-800">
+                    <p className="text-xs text-purple-400 mb-1">📏 Size</p>
+                    <p className="text-sm text-white font-bold">
+                      {formatFileSize(documentMetadata?.fileSize)}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-purple-950 bg-opacity-40 px-2 py-2 rounded border border-purple-800">
+                    <p className="text-xs text-purple-400 mb-1">📃 Pages</p>
+                    <p className="text-sm text-white font-bold">
+                      {documentMetadata?.pageCount || 'N/A'}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-purple-950 bg-opacity-40 px-2 py-2 rounded border border-purple-800">
+                    <p className="text-xs text-purple-400 mb-1">💾 Cache</p>
+                    <p className={`text-sm font-bold ${documentMetadata?.fromCache ? 'text-green-400' : 'text-blue-400'}`}>
+                      {documentMetadata?.fromCache ? '✓ Yes' : '✗ New'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Additional Metadata */}
+                {documentMetadata?.uploadedAt && (
+                  <div className="bg-purple-950 bg-opacity-40 px-2 py-2 rounded border border-purple-800">
+                    <p className="text-xs text-purple-400 mb-1">🕒 Uploaded</p>
+                    <p className="text-xs text-white">
+                      {new Date(documentMetadata.uploadedAt).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+
+                {/* Remove Document Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeDocument();
+                  }}
+                  className="w-full text-xs font-semibold bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white py-2.5 px-3 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center"
+                >
+                  <span className="mr-2">🗑️</span>
+                  Remove Document
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* No Document State */}
+          {!uploadedFile && !isProcessing && !uploadError && !error && (
+            <div className="mt-3 p-3 bg-purple-900 bg-opacity-30 border border-purple-800 rounded-lg text-xs text-purple-300">
+              <div className="flex items-start space-x-2">
+                <span className="text-base">ℹ️</span>
+                <p>
+                  {backendConnected === false ? 'Start the backend server to upload documents' : 
+                   !apiKeyStored ? 'Configure API key to enable document upload' :
+                   'Upload a PDF or TXT file to enable RAG-powered chat'}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* File Size Info */}
-      <div className="mt-4 p-3 bg-purple-800 bg-opacity-30 rounded text-xs text-purple-300">
-        <p className="font-medium mb-1">📋 Upload Requirements:</p>
-        <ul className="space-y-1">
-          <li>• Format: PDF only</li>
-          <li>• Max size: 50MB</li>
-          <li>• Processing: Local & Secure</li>
-        </ul>
+      {/* Footer - Upload Requirements */}
+      <div className="p-4 border-t border-purple-800 bg-purple-950 bg-opacity-50">
+        <div className="bg-purple-900 bg-opacity-40 border border-purple-800 rounded-lg p-3">
+          <p className="text-xs font-bold text-purple-200 mb-2 flex items-center">
+            <span className="mr-2">📋</span>
+            Upload Requirements
+          </p>
+          <ul className="space-y-1 text-xs text-purple-300">
+            <li className="flex items-center">
+              <span className="mr-2 text-purple-500">•</span>
+              <span><strong>Format:</strong> PDF or TXT only</span>
+            </li>
+            <li className="flex items-center">
+              <span className="mr-2 text-purple-500">•</span>
+              <span><strong>Max size:</strong> 25MB</span>
+            </li>
+            <li className="flex items-center">
+              <span className="mr-2 text-purple-500">•</span>
+              <span><strong>Max pages:</strong> 100</span>
+            </li>
+            <li className="flex items-center">
+              <span className="mr-2 text-purple-500">•</span>
+              <span><strong>Processing:</strong> Local & Secure</span>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   );
 }
 
 export default Sidebar;
-
-
-// // src/components/Sidebar.js
-// import { useNavigate, useLocation } from "react-router-dom";
-// import { useRef, useState } from "react";
-
-// export default function Sidebar({
-//     docs,
-//     setDocs,
-//     activeDocId,
-//     setActiveDocId,
-// }) {
-//     const navigate = useNavigate();
-//     const location = useLocation();
-//     const fileInputRef = useRef(null);
-//     const [docsOpen, setDocsOpen] = useState(true);
-
-//     const handleNav = (path) => {
-//         navigate(path);
-//     };
-
-//     const handleAddDocClick = () => {
-//         if (fileInputRef.current) fileInputRef.current.click();
-//     };
-
-//     const handleFileChange = (e) => {
-//         const files = Array.from(e.target.files || []);
-//         if (!files.length) return;
-
-//         const now = new Date().toLocaleTimeString();
-//         const newDocs = files.map((f) => ({
-//             id: `${f.name}-${Date.now()}-${Math.random()}`,
-//             name: f.name,
-//             kind: "uploaded",
-//             addedAt: now,
-//         }));
-
-//         setDocs((prev) => [...prev, ...newDocs]);
-//         if (!activeDocId && newDocs.length > 0) {
-//             setActiveDocId(newDocs[0].id);
-//         }
-//     };
-
-//     const removeDoc = (id) => {
-//         setDocs((prev) => prev.filter((d) => d.id !== id));
-//         if (activeDocId === id) {
-//             setActiveDocId(null);
-//         }
-//     };
-
-//     const isActive = (path) =>
-//         location.pathname === path
-//             ? "text-white bg-purple-900/50"
-//             : "text-slate-100/90 hover:bg-purple-900/40";
-
-//     return (
-//         <aside className="w-60 hidden md:flex flex-col bg-[#14004b] border-r border-purple-900/80">
-//             {/* Logo */}
-//             <div className="h-14 flex items-center px-4 border-b border-purple-900/80">
-//                 <div className="bg-indigo-900 px-3 py-1 rounded-lg text-xs font-semibold tracking-[0.16em] uppercase">
-//                     Logo
-//                 </div>
-//             </div>
-
-//             {/* Nav */}
-//             <nav className="flex-1 px-3 py-4 space-y-1 text-sm">
-//                 <button
-//                     className={`w-full text-left px-3 py-2 rounded-lg ${isActive("/")}`}
-//                     onClick={() => handleNav("/")}
-//                 >
-//                     Chat
-//                 </button>
-
-//                 {/* Add Doc */}
-//                 <button
-//                     className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-100/90 hover:bg-purple-900/40 transition text-sm"
-//                     onClick={handleAddDocClick}
-//                 >
-//                     <span>Add Doc</span>
-//                     <span className="text-lg leading-none">+</span>
-//                 </button>
-//                 <input
-//                     type="file"
-//                     accept=".pdf"
-//                     multiple
-//                     ref={fileInputRef}
-//                     className="hidden"
-//                     onChange={handleFileChange}
-//                 />
-
-//                 {/* My Docs */}
-//                 <div className="mt-1">
-//                     <button
-//                         className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-100/90 hover:bg-purple-900/40 transition text-sm"
-//                         onClick={() => setDocsOpen((v) => !v)}
-//                     >
-//                         <span>My docs</span>
-//                         <span className="text-xs">{docsOpen ? "▾" : "▸"}</span>
-//                     </button>
-
-//                     {docsOpen && (
-//                         <div className="mt-2 ml-2 rounded-xl bg-purple-900/40 px-2 py-2 space-y-1 max-h-60 overflow-y-auto">
-//                             {docs.length === 0 && (
-//                                 <p className="text-[11px] text-slate-300">
-//                                     No documents yet. Add PDFs using “Add Doc”.
-//                                 </p>
-//                             )}
-//                             {docs.map((doc) => (
-//                                 <div
-//                                     key={doc.id}
-//                                     className={`flex items-center justify-between gap-1 px-2 py-1 rounded-lg text-xs cursor-pointer ${activeDocId === doc.id
-//                                             ? "bg-purple-700/80 text-white"
-//                                             : "bg-purple-950/70 text-slate-100/90 hover:bg-purple-800/80"
-//                                         }`}
-//                                     onClick={() => setActiveDocId(doc.id)}
-//                                 >
-//                                     <span className="truncate">
-//                                         {doc.kind === "builtin" ? "★ " : ""}
-//                                         {doc.name}
-//                                     </span>
-//                                     {doc.kind === "uploaded" && (
-//                                         <button
-//                                             className="ml-1 text-[10px] px-1 rounded bg-black/40 hover:bg-black/70"
-//                                             onClick={(e) => {
-//                                                 e.stopPropagation();
-//                                                 removeDoc(doc.id);
-//                                             }}
-//                                         >
-//                                             X
-//                                         </button>
-//                                     )}
-//                                 </div>
-//                             ))}
-//                         </div>
-//                     )}
-//                 </div>
-
-//                 {/* Other pages */}
-//                 <button
-//                     className={`w-full text-left px-3 py-2 rounded-lg mt-1 ${isActive(
-//                         "/features"
-//                     )}`}
-//                     onClick={() => handleNav("/features")}
-//                 >
-//                     Features
-//                 </button>
-//                 <button
-//                     className={`w-full text-left px-3 py-2 rounded-lg ${isActive(
-//                         "/help"
-//                     )}`}
-//                     onClick={() => handleNav("/help")}
-//                 >
-//                     Help & FAQ
-//                 </button>
-//                 <button
-//                     className={`w-full text-left px-3 py-2 rounded-lg ${isActive(
-//                         "/about"
-//                     )}`}
-//                     onClick={() => handleNav("/about")}
-//                 >
-//                     About
-//                 </button>
-//             </nav>
-
-//             <div className="px-4 py-3 border-t border-purple-900/80 text-[11px] text-purple-100/80">
-//                 <p>Docs with ★ are built-in domains (AI, biotech, climate, etc.).</p>
-//             </div>
-//         </aside>
-//     );
-// }
-
-
-
-// import { NavLink } from "react-router-dom";
-
-// const navLinkBase =
-//     "px-3 py-2 rounded-xl text-sm flex items-center gap-2 transition hover:bg-indigo-500/20 hover:text-white";
-// const navLinkActive =
-//     "bg-indigo-500/30 text-white shadow-[0_0_18px_rgba(129,140,248,0.5)]";
-
-// export default function Sidebar() {
-//     return (
-//         <aside
-//             className="
-//         hidden md:flex md:flex-col
-//         w-64 border-r border-indigo-500/30 bg-black/30 
-//         backdrop-blur-xl
-//     "
-//         >
-//             <div className="p-4 border-b border-indigo-500/20">
-//                 <h1 className="text-lg font-semibold text-indigo-200 tracking-wide">
-//                     RAG Assistant
-//                 </h1>
-//                 <p className="text-xs text-slate-400 mt-1">
-//                     Deep-search AI for your docs.
-//                 </p>
-//             </div>
-
-//             <nav className="flex-1 p-3 space-y-2">
-//                 <NavLink
-//                     to="/"
-//                     end
-//                     className={({ isActive }) =>
-//                         `${navLinkBase} ${isActive ? navLinkActive : "text-slate-300"}`
-//                     }
-//                 >
-//                     🧠 <span>Chat</span>
-//                 </NavLink>
-
-//                 <NavLink
-//                     to="/features"
-//                     className={({ isActive }) =>
-//                         `${navLinkBase} ${isActive ? navLinkActive : "text-slate-300"}`
-//                     }
-//                 >
-//                     ✨ <span>Features</span>
-//                 </NavLink>
-
-//                 <NavLink
-//                     to="/about"
-//                     className={({ isActive }) =>
-//                         `${navLinkBase} ${isActive ? navLinkActive : "text-slate-300"}`
-//                     }
-//                 >
-//                     👩‍💻 <span>About</span>
-//                 </NavLink>
-//             </nav>
-
-//             <div className="p-3 border-t border-indigo-500/20 text-xs text-slate-500">
-//                 <p>v0.1 • RAG Assistant AI</p>
-//             </div>
-//         </aside>
-//     );
-// }
