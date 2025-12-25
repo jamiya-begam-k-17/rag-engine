@@ -72,5 +72,3 @@ rag_engine.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
-rag_engine.db

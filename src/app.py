@@ -1,8 +1,5 @@
-
 import os
 import traceback
-import logging
-from typing import List
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -10,15 +7,9 @@ from langchain_core.output_parsers import StrOutputParser
 from vectordb import VectorDB
 from utils import validate_txt_or_pdf
 from database import RAGDatabase
-
 from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
 from langchain_google_genai import ChatGoogleGenerativeAI
-import shutil
-
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 # FIX: Create data directory at project root (one level up from src/)
@@ -63,21 +54,14 @@ def load_document(filename: str, filepath: str) -> str:
     return raw_text
 
 
-
 class RAGAssistant:
     """
     A simple RAG-based AI assistant using ChromaDB and multiple LLM providers.
     Supports OpenAI, Groq, and Google Gemini APIs.
     """
 
-    def __init__(self, max_documents: int = 4):
+    def __init__(self):
         """Initialize the RAG assistant."""
-        # Configuration
-        self.MAX_DOCUMENTS = max_documents
-        
-        # Initialize logger for this class instance
-        self.logger = logging.getLogger(__name__)
-        
         # Initialize LLM - check for available API keys in order of preference
         self.llm = self._initialize_llm()
         if not self.llm:
@@ -198,17 +182,13 @@ class RAGAssistant:
                 self.current_session_id = session_id
                 self.current_collection_name = result["collection_name"]
                 
-                # Trigger cleanup if needed after successful upload
-                cleanup_result = self.cleanup_documents_if_needed()
-                
                 return {
                     "session_id": self.current_session_id,
                     "collection_name": self.current_collection_name,
                     "document_id": document_id,
                     "was_processed": was_processed,
                     "chunk_count": chunk_count,
-                    "status": "success",
-                    "cleanup_info": cleanup_result
+                    "status": "success"
                 }
             else:
                 doc_info = db.get_document_by_session(session_id)
@@ -342,184 +322,10 @@ class RAGAssistant:
         except KeyError as e:
             return {"error": f"Key error: {e}. Check your vector database.", "status": "error"}
         except Exception as e:
-
             traceback.print_exc()
             return {"error": f"Exception: {type(e).__name__}: {str(e)}", "status": "error"}
         finally:
             db.close()
-
-# =================================================================================
-# Document Cleanup Methods
-
-    def cleanup_documents_if_needed(self) -> dict:
-        """
-        Check if cleanup is needed and remove old documents if necessary.
-        
-        Returns:
-            dict: Information about cleanup operation
-        """
-        db = RAGDatabase(self.db_path)
-        db.connect()
-        
-        try:
-            # Get current document count
-            doc_count = db.get_document_count()
-            
-            if doc_count <= self.MAX_DOCUMENTS:
-                return {
-                    "status": "no_cleanup_needed",
-                    "current_count": doc_count,
-                    "max_allowed": self.MAX_DOCUMENTS,
-                    "message": f"Current document count ({doc_count}) is within limit ({self.MAX_DOCUMENTS})"
-                }
-            
-            # Cleanup is needed
-            docs_removed = db.cleanup_old_documents(self.MAX_DOCUMENTS)
-            
-            if docs_removed > 0:
-                # Also clean up orphaned ChromaDB collections and files
-                self._cleanup_orphaned_resources()
-                
-                return {
-                    "status": "cleanup_completed",
-                    "documents_removed": docs_removed,
-                    "current_count": db.get_document_count(),
-                    "max_allowed": self.MAX_DOCUMENTS,
-                    "message": f"Successfully removed {docs_removed} old documents"
-                }
-            else:
-                return {
-                    "status": "cleanup_failed",
-                    "current_count": doc_count,
-                    "max_allowed": self.MAX_DOCUMENTS,
-                    "message": "Cleanup was needed but failed to remove documents"
-                }
-                
-        except Exception as e:
-            self.logger.error(f"Error during document cleanup: {e}")
-            return {
-                "status": "cleanup_error",
-                "error": str(e),
-                "current_count": doc_count if 'doc_count' in locals() else 0
-            }
-        finally:
-            db.close()
-
-    def _cleanup_orphaned_resources(self) -> None:
-        """
-        Clean up orphaned ChromaDB collections and files that don't have database entries.
-        """
-        try:
-            # Get all valid collection names from database
-            db = RAGDatabase(self.db_path)
-            db.connect()
-            
-            # Get all collection names from database
-            db.cursor.execute("SELECT DISTINCT chromadb_collection_name FROM documents WHERE chromadb_collection_name IS NOT NULL")
-            valid_collections = [row['chromadb_collection_name'] for row in db.cursor.fetchall()]
-            
-            # Clean up ChromaDB collections
-            vector_db = VectorDB()  # Initialize with default collection
-            removed_collections = vector_db.cleanup_orphaned_collections(valid_collections)
-            
-            # Clean up orphaned files in data directory
-            removed_files = self._cleanup_orphaned_files(valid_collections)
-            
-            self.logger.info(f"Resource cleanup completed: {removed_collections} collections, {removed_files} files")
-            
-        except Exception as e:
-            self.logger.error(f"Error during resource cleanup: {e}")
-        finally:
-            db.close()
-
-    def _cleanup_orphaned_files(self, valid_collection_names: List[str]) -> int:
-        """
-        Remove files from data directory that don't have corresponding database entries.
-        
-        Args:
-            valid_collection_names: List of collection names that should be kept
-        
-        Returns:
-            int: Number of files removed
-        """
-        if not os.path.exists(DATA_DIR):
-            return 0
-            
-        try:
-            # Get all valid filenames from database
-            db = RAGDatabase(self.db_path)
-            db.connect()
-            
-            db.cursor.execute("SELECT filename FROM documents")
-            valid_filenames = {row['filename'] for row in db.cursor.fetchall()}
-            
-            # Check files in data directory
-            removed_files = 0
-            for filename in os.listdir(DATA_DIR):
-                if filename.lower().endswith(('.pdf', '.txt')):
-                    if filename not in valid_filenames:
-                        file_path = os.path.join(DATA_DIR, filename)
-                        try:
-                            os.remove(file_path)
-                            self.logger.info(f"Removed orphaned file: {filename}")
-                            removed_files += 1
-                        except Exception as e:
-                            self.logger.error(f"Failed to remove file {filename}: {e}")
-            
-            return removed_files
-            
-        except Exception as e:
-            self.logger.error(f"Error cleaning up orphaned files: {e}")
-            return 0
-        finally:
-            db.close()
-
-    def _delete_document_completely(self, document_id: str, collection_name: str, filename: str) -> bool:
-        """
-        Delete a document completely: database record, ChromaDB collection, and file.
-        
-        Args:
-            document_id: Document identifier
-            collection_name: ChromaDB collection name
-            filename: Original filename
-        
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        try:
-            success = True
-            
-            # 1. Delete from database (including all dependencies)
-            db = RAGDatabase(self.db_path)
-            db.connect()
-            if not db.delete_document_and_dependencies(document_id):
-                self.logger.error(f"Failed to delete database record for {document_id[:8]}...")
-                success = False
-            db.close()
-            
-            # 2. Delete ChromaDB collection
-            if collection_name:
-                vector_db = VectorDB(collection_name=collection_name)
-                if not vector_db.delete_collection_by_name(collection_name):
-                    self.logger.error(f"Failed to delete ChromaDB collection: {collection_name}")
-                    success = False
-            
-            # 3. Delete physical file
-            if filename:
-                file_path = os.path.join(DATA_DIR, filename)
-                if os.path.exists(file_path):
-                    try:
-                        os.remove(file_path)
-                        self.logger.info(f"Deleted file: {filename}")
-                    except Exception as e:
-                        self.logger.error(f"Failed to delete file {filename}: {e}")
-                        success = False
-            
-            return success
-            
-        except Exception as e:
-            self.logger.error(f"Error during complete document deletion: {e}")
-            return False
 
 
 def main():
