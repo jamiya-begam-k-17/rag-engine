@@ -231,6 +231,7 @@ with st.sidebar:
     # File Upload Section
     if not st.session_state.file_processed:
         st.markdown("#### 📄 Document Context")
+        st.info("📋 Limits: PDF (100 pages max) • TXT files", icon="ℹ️")
         uploaded_file = st.file_uploader(
             "Upload PDF or TXT",
             type=['pdf', 'txt'],

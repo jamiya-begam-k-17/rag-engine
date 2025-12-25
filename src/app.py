@@ -106,28 +106,34 @@ class RAGAssistant:
         print(f"GROQ_API_KEY exists: {'GROQ_API_KEY' in os.environ}")
         print(f"GOOGLE_API_KEY exists: {'GOOGLE_API_KEY' in os.environ}")
         
-        # Check for OpenAI API key
+        # Check for Google API key
         if os.getenv("GOOGLE_API_KEY"):
             model_name = os.getenv("GOOGLE_MODEL", "gemini-2.0-flash-exp")
+            api_key = os.getenv("GOOGLE_API_KEY")
             print(f"Using Google Gemini model: {model_name}")
+            print(f"API Key (first 5 chars): {api_key[:5]}...")  
             return ChatGoogleGenerativeAI(
-                google_api_key=os.getenv("GOOGLE_API_KEY"),
+                google_api_key=api_key,
                 model=model_name,
                 temperature=0.1,
             )
 
         elif os.getenv("GROQ_API_KEY"):
             model_name = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+            api_key = os.getenv("GROQ_API_KEY")
             print(f"Using Groq model: {model_name}")
+            print(f"API Key (first 5 chars): {api_key[:5]}...") 
             return ChatGroq(
-                api_key=os.getenv("GROQ_API_KEY"), model=model_name, temperature=0.1
+                api_key=api_key, model=model_name, temperature=0.1
             )
 
         elif os.getenv("OPENAI_API_KEY"):
             model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+            api_key = os.getenv("OPENAI_API_KEY")
             print(f"Using OpenAI model: {model_name}")
+            print(f"API Key (first 5 chars): {api_key[:5]}...") 
             return ChatOpenAI(
-                api_key=os.getenv("OPENAI_API_KEY"), model=model_name, temperature=0.1
+                api_key=api_key, model=model_name, temperature=0.1
             )
         
         else:
@@ -157,15 +163,21 @@ class RAGAssistant:
 
         try:
             if not os.path.exists(filepath):
-                return {"error": f"File not found: {filepath}"}
+                return {"error": f"File not found: {filepath}", "status": "error"}
             
             filename = os.path.basename(filepath)
             
             # FIX: Validate file type before processing
             if not filename.lower().endswith(('.pdf', '.txt')):
-                return {"error": "Invalid file type. Only PDF and TXT files are supported."}
+                return {"error": "Invalid file type. Only PDF and TXT files are supported.", "status": "error"}
             
-            doc_text = load_document(filename, filepath)
+            # This will raise exceptions if PDF has issues
+            try:
+                doc_text = load_document(filename, filepath)
+            except Exception as load_error:
+                # Catch validation errors from validate_txt_or_pdf
+                return {"error": str(load_error), "status": "error"}
+            
             doc_in_bytes = doc_text.encode("utf-8")
             
             result = db.process_file_upload(doc_in_bytes, filename)
@@ -208,10 +220,6 @@ class RAGAssistant:
                     "status": "success"
                 }
 
-        except FileNotFoundError as e:
-            return {"error": f"File not found: {e}", "status": "error"}
-        except FileExistsError as e:
-            return {"error": f"File doesn't exist: {e}", "status": "error"}
         except Exception as e:
             traceback.print_exc()
             return {"error": f"Error processing file: {str(e)}", "status": "error"}

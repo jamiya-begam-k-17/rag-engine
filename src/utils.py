@@ -4,6 +4,7 @@ from langchain_community.document_loaders import PyMuPDFLoader
 import os
 
 MAX_PAGES = 100
+MAX_TXT_SIZE_MB = 10
 
 
 def validate_txt_or_pdf(filename: str, filepath: str) -> str:
@@ -20,7 +21,7 @@ def validate_txt_or_pdf(filename: str, filepath: str) -> str:
     Raises:
         FileNotFoundError: If file doesn't exist
         TypeError: If file is not PDF or TXT
-        Exception: If PDF is too large
+        Exception: If PDF is too large or has other issues
     """
     # Check if file exists
     if not os.path.exists(filepath):
@@ -48,19 +49,45 @@ def validate_txt_or_pdf(filename: str, filepath: str) -> str:
             raw_text = docs[0].page_content
             
             if not raw_text or not raw_text.strip():
-                raise Exception("PDF contains no extractable text")
+                raise Exception(
+                    "PDF contains no extractable text. "
+                    "This might be a scanned document or image-based PDF. "
+                    "Please use a PDF with selectable text."
+                )
             
             return raw_text
             
         except Exception as e:
-            # Re-raise with more context if it's our custom exception
-            if "Document too large" in str(e) or "no extractable text" in str(e):
-                raise
-            # Otherwise, wrap in a more descriptive error
-            raise Exception(f"Error processing PDF: {str(e)}")
+            error_msg = str(e).lower()
+            
+            # Check for specific error types and provide user-friendly messages
+            if "no extractable text" in error_msg or "scanned document" in error_msg:
+                raise Exception(
+                    "PDF contains no extractable text. "
+                    "Please use a text-based PDF, not a scanned image."
+                )
+            elif "document too large" in error_msg or "maximum allowed" in error_msg:
+                raise  # Re-raise our custom size error as-is
+            elif "empty" in error_msg or "couldn't be loaded" in error_msg:
+                raise Exception("PDF file is empty or corrupted. Please check the file.")
+            elif "password" in error_msg or "encrypted" in error_msg:
+                raise Exception("PDF is password-protected. Please upload an unencrypted PDF.")
+            elif "pdf" in error_msg and ("invalid" in error_msg or "corrupt" in error_msg):
+                raise Exception("PDF file appears to be corrupted or invalid.")
+            else:
+                # Generic error for any other PyMuPDF failures
+                raise Exception(f"Unable to process PDF: {str(e)}")
     
     elif file_lower.endswith(".txt"):
         try:
+            # Check file size first
+            file_size_mb = get_file_size_mb(filepath)
+            if file_size_mb > MAX_TXT_SIZE_MB:
+                raise Exception(
+                    f"TXT file too large: {file_size_mb}MB. "
+                    f"Maximum allowed is {MAX_TXT_SIZE_MB}MB."
+                )
+            
             with open(filepath, 'r', encoding='utf-8') as txt_file:
                 raw_text = txt_file.read()
             
@@ -76,8 +103,11 @@ def validate_txt_or_pdf(filename: str, filepath: str) -> str:
                     raw_text = txt_file.read()
                 return raw_text
             except Exception as e:
-                raise Exception(f"Error reading TXT file: {str(e)}")
+                raise Exception(f"Error reading TXT file with alternative encoding: {str(e)}")
         except Exception as e:
+            # Check if it's our size limit exception
+            if "too large" in str(e).lower() or "maximum allowed" in str(e).lower():
+                raise  # Re-raise size limit error as-is
             raise Exception(f"Error processing TXT file: {str(e)}")
     
     else:
@@ -85,7 +115,6 @@ def validate_txt_or_pdf(filename: str, filepath: str) -> str:
             f"Unsupported file type: {filename}. "
             "Only .pdf and .txt files are supported."
         )
-
 
 def validate_pdf_upload(file: UploadFile) -> int:
     """
