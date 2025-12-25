@@ -32,6 +32,10 @@ MANIFEST
 # ChromaDB
 chroma_db/
 
+data/
+
+rag_engine.db/
+
 # IDE
 .vscode/
 .idea/

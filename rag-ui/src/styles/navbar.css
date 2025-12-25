@@ -1,0 +1,86 @@
+.navbar {
+    width: 100%;
+    background-color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    padding: 12px 0;
+    font-family: "Poppins", sans-serif;
+}
+
+.navbar-container {
+    width: 90%;
+    max-width: 1200px;
+    margin: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Logo */
+.navbar-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.logo-icon {
+    font-size: 24px;
+}
+
+.logo-text {
+    font-size: 20px;
+    font-weight: 600;
+    color: #111;
+}
+
+/* Links */
+.navbar-links {
+    list-style: none;
+    display: flex;
+    gap: 24px;
+}
+
+.navbar-links li a {
+    text-decoration: none;
+    color: #333;
+    font-weight: 500;
+    transition: color 0.3s;
+}
+
+.navbar-links li a:hover {
+    color: #007bff;
+}
+
+/* Button */
+.get-started-btn {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.3s;
+    font-weight: 500;
+}
+
+.get-started-btn:hover {
+    background: #0056b3;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .navbar-links {
+        display: none;
+        /* You can later add a mobile menu */
+    }
+
+    .logo-text {
+        font-size: 18px;
+    }
+
+    .get-started-btn {
+        padding: 6px 14px;
+    }
+}

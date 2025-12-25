@@ -1,0 +1,19 @@
+body {
+    margin: 0;
+    font-family: "Poppins", sans-serif;
+    background: #ffffff;
+    color: #111;
+    overflow-x: hidden;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+a {
+    text-decoration: none;
+}
+
+button {
+    font-family: inherit;
+}
