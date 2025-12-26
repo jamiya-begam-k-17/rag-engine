@@ -1,0 +1,5 @@
+﻿[tool.pylint.messages_control]
+disable = "all"
+
+[tool.pylint.format]
+max-line-length = 120

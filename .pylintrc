@@ -1,0 +1,5 @@
+﻿[MESSAGES CONTROL]
+disable=all
+
+[FORMAT]
+max-line-length=120
