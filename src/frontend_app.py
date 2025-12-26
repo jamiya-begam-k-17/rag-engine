@@ -1,14 +1,13 @@
 import streamlit as st
 import time
-import os
 import sys
 from pathlib import Path
+from langchain_core.output_parsers import StrOutputParser
 
 # Add parent directory to path to import your backend modules
 sys.path.append(str(Path(__file__).parent))
 
 from app import RAGAssistant
-from database import RAGDatabase
 
 # 1. Page Configuration
 st.set_page_config(
@@ -42,27 +41,54 @@ init_session_state()
 # 3. Initialize RAGAssistant (only once)
 @st.cache_resource
 def get_rag_assistant():
-    """Initialize RAG Assistant - cached to avoid recreation"""
+    """Initialize RAG Assistant from .env file using _initialize_llm()"""
     try:
-        # Create assistant without requiring API key
+        # Create assistant without API key
         assistant = RAGAssistant(require_api_key=False)
         
-        # Try to load API key from database
-        db = RAGDatabase("rag_engine.db")
-        db.connect()
-        key_data = db.get_api_key()
-        db.close()
+        # Use the existing _initialize_llm() method to load from .env
+        llm = assistant._initialize_llm(require_api_key=False)
         
-        if key_data:
-            # Initialize LLM with database key
-            assistant.set_api_key(key_data["api_key"], key_data["model"])
-            st.success(f"✅ Loaded API key for {key_data['model']} from database")
+        if llm:
+            # LLM was successfully initialized from .env
+            assistant.llm = llm
+            assistant.chain = assistant.prompt_template | assistant.llm | StrOutputParser()
+            
+            # Show success message with model info
+            if assistant.current_model:
+                st.success(f"✅ Loaded API key from .env: {assistant.current_model}")
+            else:
+                st.success("✅ API key loaded from .env file")
         else:
-            st.warning("⚠️ No API key found. Please add API key via React frontend.")
+            # No API key found in .env
+            st.error("""
+            ❌ No API key found in .env file!
+            
+            **Please add your API key to `src/.env`:**
+            ```
+            # For Groq (Recommended - Free)
+            GROQ_API_KEY=your_key_here
+            GROQ_MODEL=llama-3.1-8b-instant
+            
+            # OR for Google Gemini
+            GOOGLE_API_KEY=your_key_here
+            GOOGLE_MODEL=gemini-2.0-flash-exp
+            
+            # OR for OpenAI
+            OPENAI_API_KEY=your_key_here
+            OPENAI_MODEL=gpt-4o-mini
+            ```
+            
+            Then restart Streamlit: `streamlit run frontend_app.py`
+            """)
+            return None
         
         return assistant
+        
     except Exception as e:
         st.error(f"Failed to initialize RAG Assistant: {e}")
+        import traceback
+        st.code(traceback.format_exc())
         return None
 
 # 4. Helper Functions
@@ -406,7 +432,7 @@ elif st.session_state.page == 'Chat':
         user_message = st.session_state.messages[-1]
         
         with st.chat_message("assistant"):
-            with st.spinner("🤔 Thinking..."):
+            with st.spinner("🤖 Getting your answer and related chunks..."):
                 # FIX: Get assistant from session_state (now properly initialized) or cache
                 assistant = st.session_state.assistant or get_rag_assistant()
                 
@@ -483,10 +509,10 @@ elif st.session_state.page == 'FAQ':
     st.title("❓ Help & FAQ")
     
     faqs = [
-        {"q": "What file formats are supported?", "a": "Currently we support PDF and TXT files. PDFs are automatically parsed and chunked."},
-        {"q": "Is my data secure?", "a": "Yes. All processing happens locally on your machine. We only send text chunks to the LLM for answer generation."},
-        {"q": "How do I switch models?", "a": "You can switch models by changing the API key in your `.env` file. We support OpenAI, Groq, and Gemini."},
-        {"q": "Can I upload multiple files?", "a": "Currently, the system handles one active document at a time to ensure focused context."}
+        {"q": "What file formats are supported?", "a": "Currently we support PDF (MAX 100 pages) and TXT files. PDFs are automatically parsed, chunked and embedded."},
+        {"q": "Is my data secure?", "a": "Yes. All processing happens locally on your machine. We only send text chunks to the LLM for answer generation. In our React based frontend also, NONE of your data gets stored."},
+        {"q": "How do I switch models?", "a": "You can switch models by changing the API key in your `.env` file. We support OpenAI, Groq, and Gemini. If you are using free tier api keys, Groq should be preferred."},
+        {"q": "Can I upload multiple files?", "a": "Currently, the system handles one active document at a time to ensure focused context. Although, if you have already uploaded a file earlier, you don't need to wait again for it to be processed again due to our smart caching."}
     ]
     
     for faq in faqs:

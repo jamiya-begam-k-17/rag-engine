@@ -2,6 +2,9 @@
 venv/
 .venv/
 
+# Environment(API KEYS)
+.env
+
 # Python
 __pycache__/
 *.py[cod]
