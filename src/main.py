@@ -8,8 +8,8 @@ from dotenv import load_dotenv, set_key
 import time
 from pathlib import Path
 
-from app import RAGAssistant
-from database import RAGDatabase
+from .app import RAGAssistant
+from .database import RAGDatabase
 
 # -------------------------------------------------
 # App setup
@@ -34,7 +34,8 @@ db = RAGDatabase("rag_engine.db")
 db.connect()
 db.create_tables()
 
-UPLOAD_DIR = "data"
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+UPLOAD_DIR = os.path.join(PROJECT_ROOT, "data")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Global variable to track the current model

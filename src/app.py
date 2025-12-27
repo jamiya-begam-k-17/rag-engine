@@ -4,9 +4,9 @@ from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
-from vectordb import VectorDB
-from utils import validate_txt_or_pdf
-from database import RAGDatabase
+from .vectordb import VectorDB
+from .utils import validate_txt_or_pdf
+from .database import RAGDatabase
 from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
 from langchain_google_genai import ChatGoogleGenerativeAI
