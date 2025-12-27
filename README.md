@@ -502,7 +502,7 @@ This sophisticated caching system is **near production-grade** and saves signifi
 
 ```bash
 # Clone the repository
-git clone https://github.com/AdarshRaj2028/rag-engine.git
+git clone https://github.com/AdarshRaj2028/rag-engine
 cd rag-engine
 
 # Create virtual environment
