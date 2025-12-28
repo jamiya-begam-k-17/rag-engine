@@ -32,7 +32,7 @@ def validate_txt_or_pdf(filename: str, filepath: str) -> str:
     
     if file_lower.endswith(".pdf"):
         try:
-            loader = PyMuPDFLoader(filepath, mode="single")
+            loader = PyMuPDFLoader(filepath, extract_images=False)
             docs = loader.load()
             
             if not docs:
