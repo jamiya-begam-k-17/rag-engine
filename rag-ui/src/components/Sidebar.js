@@ -161,7 +161,7 @@ function Sidebar() {
     <div className="w-64 bg-gradient-to-b from-purple-950 to-purple-900 border-r border-purple-800 shadow-2xl flex flex-col h-screen">
       <div className="p-4 border-b border-purple-800 bg-purple-900 bg-opacity-50">
         <h2 className="text-xl font-bold mb-1 bg-gradient-to-r from-purple-300 via-pink-300 to-purple-400 bg-clip-text text-transparent">
-          🤖 RAG Engine
+          RAG Engine
         </h2>
         <p className="text-xs text-purple-400 font-medium">v1.0 • Agentic AI Edition</p>
       </div>
@@ -180,7 +180,6 @@ function Sidebar() {
                     : 'text-purple-200 hover:bg-purple-800 hover:text-white'
                 }`}
               >
-                <span className="text-lg mr-3">🏠</span>
                 <span className="text-sm font-medium">Home</span>
               </Link>
             </li>
@@ -193,7 +192,6 @@ function Sidebar() {
                     : 'text-purple-200 hover:bg-purple-800 hover:text-white'
                 }`}
               >
-                <span className="text-lg mr-3">💬</span>
                 <span className="text-sm font-medium">Chat Assistant</span>
               </Link>
             </li>
@@ -206,7 +204,6 @@ function Sidebar() {
                     : 'text-purple-200 hover:bg-purple-800 hover:text-white'
                 }`}
               >
-                <span className="text-lg mr-3">⚡</span>
                 <span className="text-sm font-medium">Features</span>
               </Link>
             </li>
@@ -219,7 +216,6 @@ function Sidebar() {
                     : 'text-purple-200 hover:bg-purple-800 hover:text-white'
                 }`}
               >
-                <span className="text-lg mr-3">❓</span>
                 <span className="text-sm font-medium">Help & FAQ</span>
               </Link>
             </li>
@@ -231,7 +227,6 @@ function Sidebar() {
         {/* Model Selection Section */}
         <div>
           <h3 className="text-xs font-bold mb-3 text-purple-300 uppercase tracking-wider flex items-center">
-            <span className="mr-2">🤖</span>
             Model Selection
             <span className="ml-auto text-red-400 text-lg">*</span>
           </h3>
@@ -250,7 +245,7 @@ function Sidebar() {
                 <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
                 <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
               </optgroup> */}
-              <optgroup label="🦙 Groq">
+              <optgroup>
                 <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
                 <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile</option>
               </optgroup>
@@ -273,7 +268,6 @@ function Sidebar() {
         {/* API Key Section */}
         <div>
           <h3 className="text-xs font-bold mb-3 text-purple-300 uppercase tracking-wider flex items-center">
-            <span className="mr-2">🔑</span>
             API Key
             <span className="ml-auto text-red-400 text-lg">*</span>
           </h3>
@@ -286,12 +280,10 @@ function Sidebar() {
               </div>
               <div className="space-y-1.5 text-xs">
                 <div className="flex items-center text-green-200">
-                  <span className="mr-2">🤖</span>
                   <span className="font-medium">Model:</span>
                   <span className="ml-auto text-green-100 font-semibold">{getModelDisplayName(selectedModel)}</span>
                 </div>
                 <div className="flex items-center text-green-200">
-                  <span className="mr-2">🔐</span>
                   <span className="font-medium">Status:</span>
                   <span className="ml-auto text-green-100 font-semibold">Active</span>
                 </div>
@@ -364,7 +356,6 @@ function Sidebar() {
         {/* Document Upload Section */}
         <div>
           <h3 className="text-xs font-bold mb-3 text-purple-300 uppercase tracking-wider flex items-center">
-            <span className="mr-2">📁</span>
             Document Context
           </h3>
           
@@ -451,15 +442,12 @@ function Sidebar() {
               </div>
               <div className="space-y-2 text-xs text-purple-300">
                 <div className="flex items-center space-x-2 animate-pulse">
-                  <span className="text-base">📄</span>
                   <span>Parsing document content</span>
                 </div>
                 <div className="flex items-center space-x-2 animate-pulse" style={{animationDelay: '0.2s'}}>
-                  <span className="text-base">🧠</span>
                   <span>Generating embeddings</span>
                 </div>
                 <div className="flex items-center space-x-2 animate-pulse" style={{animationDelay: '0.4s'}}>
-                  <span className="text-base">💾</span>
                   <span>Storing in vector database</span>
                 </div>
               </div>
@@ -479,7 +467,7 @@ function Sidebar() {
               <div className="p-3 space-y-3">
                 {/* File Name */}
                 <div>
-                  <p className="text-xs text-purple-400 font-medium mb-1">📄 File Name</p>
+                  <p className="text-xs text-purple-400 font-medium mb-1">File Name</p>
                   <p className="text-sm text-white font-medium truncate bg-purple-950 bg-opacity-40 px-2 py-1.5 rounded border border-purple-800">
                     {uploadedFile}
                   </p>
@@ -488,28 +476,28 @@ function Sidebar() {
                 {/* Document Details Grid */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-purple-950 bg-opacity-40 px-2 py-2 rounded border border-purple-800">
-                    <p className="text-xs text-purple-400 mb-1">📊 Chunks</p>
+                    <p className="text-xs text-purple-400 mb-1">Chunks</p>
                     <p className="text-sm text-white font-bold">
                       {documentMetadata?.chunkCount || 'N/A'}
                     </p>
                   </div>
                   
                   <div className="bg-purple-950 bg-opacity-40 px-2 py-2 rounded border border-purple-800">
-                    <p className="text-xs text-purple-400 mb-1">📏 Size</p>
+                    <p className="text-xs text-purple-400 mb-1">Size</p>
                     <p className="text-sm text-white font-bold">
                       {formatFileSize(documentMetadata?.fileSize)}
                     </p>
                   </div>
                   
                   <div className="bg-purple-950 bg-opacity-40 px-2 py-2 rounded border border-purple-800">
-                    <p className="text-xs text-purple-400 mb-1">📃 Pages</p>
+                    <p className="text-xs text-purple-400 mb-1">Pages</p>
                     <p className="text-sm text-white font-bold">
                       {documentMetadata?.pageCount || 'N/A'}
                     </p>
                   </div>
                   
                   <div className="bg-purple-950 bg-opacity-40 px-2 py-2 rounded border border-purple-800">
-                    <p className="text-xs text-purple-400 mb-1">💾 Cache</p>
+                    <p className="text-xs text-purple-400 mb-1">Cache</p>
                     <p className={`text-sm font-bold ${documentMetadata?.fromCache ? 'text-green-400' : 'text-blue-400'}`}>
                       {documentMetadata?.fromCache ? '✓ Yes' : '✗ New'}
                     </p>
@@ -519,7 +507,7 @@ function Sidebar() {
                 {/* Additional Metadata */}
                 {documentMetadata?.uploadedAt && (
                   <div className="bg-purple-950 bg-opacity-40 px-2 py-2 rounded border border-purple-800">
-                    <p className="text-xs text-purple-400 mb-1">🕒 Uploaded</p>
+                    <p className="text-xs text-purple-400 mb-1">Uploaded</p>
                     <p className="text-xs text-white">
                       {new Date(documentMetadata.uploadedAt).toLocaleString()}
                     </p>
@@ -534,7 +522,6 @@ function Sidebar() {
                   }}
                   className="w-full text-xs font-semibold bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white py-2.5 px-3 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center"
                 >
-                  <span className="mr-2">🗑️</span>
                   Remove Document
                 </button>
               </div>
@@ -561,7 +548,6 @@ function Sidebar() {
       <div className="p-4 border-t border-purple-800 bg-purple-950 bg-opacity-50">
         <div className="bg-purple-900 bg-opacity-40 border border-purple-800 rounded-lg p-3">
           <p className="text-xs font-bold text-purple-200 mb-2 flex items-center">
-            <span className="mr-2">📋</span>
             Upload Requirements
           </p>
           <ul className="space-y-1 text-xs text-purple-300">

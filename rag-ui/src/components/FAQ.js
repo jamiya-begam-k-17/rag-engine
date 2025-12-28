@@ -46,31 +46,26 @@ const usageSteps = [
         step: 1,
         title: "Configure API Key",
         desc: "On first launch, enter your API key for Groq, OpenAI, or Gemini in the settings modal. Choose your preferred model (e.g., llama-3.1-8b-instant for Groq).",
-        icon: "🔑"
     },
         {
         step: 2,
         title: "Upload Document",
         desc: "Use the 'Upload PDF or TXT' button in the sidebar to add your own document. Watch the progress as it's chunked, embedded, and indexed.",
-        icon: "📄"
     },
     {
         step: 3,
         title: "Navigate to Chat",
         desc: "Click 'Chat Assistant' in the sidebar. You can start chatting with your digitalized document. It's mandatory to upload a document before starting a conversation.",
-        icon: "💬"
     },
     {
         step: 4,
         title: "Ask Questions",
         desc: "Type your question in the chat input. The system retrieves relevant chunks and generates a grounded response.",
-        icon: "❓"
     },
     {
         step: 5,
         title: "Explore Features",
         desc: "Visit 'Features' to understand the RAG architecture, or check 'About' for team and project information.",
-        icon: "⚡"
     }
 ];
 
@@ -138,7 +133,7 @@ export default function HelpFaq() {
                 <div className="space-y-3">
                     <div className="rounded-lg bg-amber-950/30 border border-amber-800/40 p-3">
                         <p className="text-xs font-semibold text-amber-200 mb-1">
-                            ⚠️ "No API key configured" error
+                            "No API key configured" error
                         </p>
                         <p className="text-xs text-slate-300">
                             Make sure you've entered a valid API key in the settings modal before uploading documents or asking questions.
@@ -146,7 +141,7 @@ export default function HelpFaq() {
                     </div>
                     <div className="rounded-lg bg-red-950/30 border border-red-800/40 p-3">
                         <p className="text-xs font-semibold text-red-200 mb-1">
-                            ❌ "PDF contains no extractable text"
+                            "PDF contains no extractable text"
                         </p>
                         <p className="text-xs text-slate-300">
                             Your PDF might be scanned or image-based. Use a text-selectable PDF or run OCR preprocessing first.
@@ -154,7 +149,7 @@ export default function HelpFaq() {
                     </div>
                     <div className="rounded-lg bg-blue-950/30 border border-blue-800/40 p-3">
                         <p className="text-xs font-semibold text-blue-200 mb-1">
-                            ℹ️ Slow response times
+                            Slow response times
                         </p>
                         <p className="text-xs text-slate-300">
                             Free-tier hosting may have cold starts (~30s). For faster inference, consider Groq's models or run the local Streamlit version.
@@ -162,7 +157,7 @@ export default function HelpFaq() {
                     </div>
                     <div className="rounded-lg bg-purple-950/30 border border-purple-800/40 p-3">
                         <p className="text-xs font-semibold text-purple-200 mb-1">
-                            🔄 "Session not found" error
+                            "Session not found" error
                         </p>
                         <p className="text-xs text-slate-300">
                             Your session may have expired or the database was reset. Re-upload your document to create a new session.
@@ -206,7 +201,6 @@ export default function HelpFaq() {
 
             <div className="rounded-xl border border-indigo-500/40 bg-gradient-to-br from-indigo-950/50 to-purple-950/50 p-5">
                 <h3 className="text-base font-bold text-indigo-100 mb-2 flex items-center">
-                    <span className="text-xl mr-2">💡</span>
                     Need More Power?
                 </h3>
                 <p className="text-sm text-slate-300 mb-3">
@@ -216,7 +210,7 @@ export default function HelpFaq() {
                     It provides the full RAG engine on your machine with extended configuration options.
                 </p>
                 <p className="text-xs text-slate-400">
-                    📥 Clone the repository and follow the README instructions for local setup.
+                    Clone the repository and follow the README instructions for local setup.
                 </p>
             </div>
         </div>

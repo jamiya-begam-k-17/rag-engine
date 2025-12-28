@@ -27,7 +27,7 @@ export default function Features() {
 
     const deploymentFeatures = [
         {
-            title: "🌐 Web Version (Current)",
+            title: "Web Version (Current)",
             features: [
                 "Cloud-deployed on Render's free tier for universal access",
                 "No installation required—use from any device with a browser",
@@ -45,7 +45,7 @@ export default function Features() {
             ]
         },
         {
-            title: "🖥️ Local Streamlit Version",
+            title: "Local Streamlit Version",
             features: [
                 "Run entirely on your machine—complete data privacy",
                 "API keys loaded from .env file (never stored in database)",
@@ -126,7 +126,7 @@ export default function Features() {
                             {deployment.benefits && (
                                 <div className="mb-3">
                                     <p className="text-xs font-semibold text-blue-300 mb-1.5">
-                                        ⚡ Benefits:
+                                        Benefits:
                                     </p>
                                     <ul className="text-xs text-slate-300 space-y-1">
                                         {deployment.benefits.map((benefit, idx) => (
@@ -142,7 +142,7 @@ export default function Features() {
                             {deployment.limitations && (
                                 <div>
                                     <p className="text-xs font-semibold text-amber-300 mb-1.5">
-                                        ⚠ Limitations:
+                                        Limitations:
                                     </p>
                                     <ul className="text-xs text-slate-300 space-y-1">
                                         {deployment.limitations.map((limitation, idx) => (
@@ -160,7 +160,7 @@ export default function Features() {
                 
                 <div className="mt-4 p-4 rounded-lg bg-blue-950/30 border border-blue-800/40">
                     <p className="text-xs text-blue-200">
-                        <span className="font-semibold">🔒 Security Note:</span> Your API keys
+                        <span className="font-semibold">Security Note:</span> Your API keys
                         are stored in the backend database. They are never
                         exposed in the frontend or transmitted over unencrypted channels. For
                         maximum privacy with sensitive documents, we recommend using the local

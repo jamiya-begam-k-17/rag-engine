@@ -193,7 +193,7 @@ const Chat = () => {
               <div className="flex items-center">
                 <span className="mr-2 text-xl">🤖</span>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-300 mr-2"></div>
-                <span className="text-purple-200">🔍 Analyzing document nodes...</span>
+                <span className="text-purple-200">Analyzing document nodes...</span>
               </div>
             </div>
           </div>
