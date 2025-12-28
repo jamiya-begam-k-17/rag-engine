@@ -19,7 +19,7 @@ app = FastAPI(title="RAG Backend API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://rag-engine-production-98ab.up.railway.app/", "https://*.railway.app", ],
+    allow_origins=["http://localhost:3000", "https://rag-engine-production-98ab.up.railway.app", "https://*.railway.app", ],
     
     allow_credentials=True,
     allow_methods=["*"],
