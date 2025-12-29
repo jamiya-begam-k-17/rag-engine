@@ -644,7 +644,7 @@ SQLite database setup and schema design
 Smart caching system (SHA-256 + UUID5)
 Helped in configuring Vector database
 Final testing and debugging
-2. Jamiya - Frontend Developer & API Integration Specialist
+2. Jamiya - Frontend Developer & API Integration
 
 React UI development and component design
 Configured FastAPI
@@ -690,5 +690,4 @@ Project Type: Retrieval-Augmented Generation System
 For questions or support:
 
 - **GitHub Issues**: [Create an issue](https://github.com/AdarshRaj2028/rag-engine/issues)
-- **Email**: your-email@example.com
 - **Documentation**: Check the [Wiki](https://github.com/AdarshRaj2028/rag-engine/wiki)
